@@ -1,0 +1,315 @@
+---
+title: "Berries Project"
+author: "Haoyu Li"
+date: "10/18/2020"
+output: pdf_document
+---
+```{r setup, include=FALSE}
+library(knitr)
+library(tidyverse)
+library(magrittr)
+library(kableExtra)
+
+opts_chunk$set(echo = FALSE,
+               warning = FALSE,
+               message = FALSE)
+```
+
+#Overview
+Every year, the United States Department of Agriculture collect enormous amount of data for different kinds of agriculture products, including animals, crops, and fruits etc. These data have been collected for agriculture research purpose. Thus, it is important for research team not just only to collect data, but to have the ability to clean, organize, and explore the data for future analysis and modeling, since the data that is collected annualy sometimes are just a bunch of data cluster, which means the data is a mess. For this project, we are going to look at the data including three major berries, and we are going to clean, organize, and explore the berries data so that these data can be used for future research purpose.
+
+#1.Data Cleaning
+
+This part mainly includes the process of how the data will be cleaning and what the problems we encounter with the raw data. Eventually, we provide the code to fix these problem and clean the raw data
+
+##(1)Read data and roughly cleaning
+
+The berries data can be found from the USDA database selector :
+http://quickstats.nass.usda.gov
+
+```{r}
+ag_data <- read_csv("berries.csv", col_names = TRUE)
+head(ag_data,n=20)
+```
+
+-By looking at the first 20 rows of data, we can have a feeling that some columns may just have one values, so for these columns, we can disgard them since they may do not have effect or relation with other variables.
+
+```{r}
+#look at how many unique values in each column
+aa<-ag_data %>% summarise_all(n_distinct)
+print(aa)
+```
+
+-Now we select the columns with only
+
+-We can also view the column names which only have one unique value
+
+```{r}
+#make a list of the columns which has only one value
+bb<-which(aa[1,]==1)
+#columns that only have one unique value
+cn<-colnames(ag_data)[bb]
+print(cn)
+```
+
+-Now we delete these columns that we list above
+
+```{r}
+ag_data %<>% select(-all_of(bb))
+head(ag_data,n=20)
+
+```
+
+
+-We view the selected ag_data find out that "State" and "State ANSI" are the same thing, so we get rid one of them
+
+
+```{r}
+ag_data%<>%select(-`State ANSI`)
+```
+
+-Now we have initially cleaned our data
+
+```{r}
+kable(head(ag_data)) %>%
+  kable_styling(font_size=12)
+```
+
+##(2) Target specific columns 
+
+-We have roughly clean the ag_data and shrink it to 8 columns. But when we look closely, there are some columns containing more than one character information, which is not good enough for the data analysis. So now we need to focus on these columns and try to separate the information in these columns
+
+
+-One of the important purposes of this berries project is to summarize the major kinds of berries data.
+
+-For the simplicity of this project, we choose one of the berries that we want to summarize. Since all of the berries data structure will be the same, if we clean and organize one of the berries data, we should be able to deal with other berries data.
+
+-First we look at how many berries we have
+```{r}
+berry <- unique(ag_data$Commodity)
+print(berry)
+```
+
+-we choose one of the berries: Strawberries, and the period only equals to "Year" will be included.
+
+###Strawberries
+
+```{r}
+strawberry <- ag_data %>% filter((Commodity=="STRAWBERRIES") & (Period=="YEAR"))
+```
+
+-Now we can delete "Commodity“ and "Period" to make the strawberry data more tidy.
+```{r}
+strawberry %<>% select(-c(Period, Commodity))
+head(strawberry,n=20)
+```
+
+
+####Dealing with Data item
+-Next we clean the "Data item" column since it contains multiple values
+-We separate 'Data item' into several different columns
+
+```{r}
+#Revise the first 5 rows in 'Data item' so their formats are consistent with other rows.
+strawberry$`Data Item`[1]<-str_replace(strawberry$`Data Item`[1],"STRAWBERRIES","STRAWBERRIES, TAME")
+strawberry$`Data Item`[2]<-str_replace(strawberry$`Data Item`[2],"STRAWBERRIES","STRAWBERRIES, TAME")
+strawberry$`Data Item`[3]<-str_replace(strawberry$`Data Item`[3],"STRAWBERRIES","STRAWBERRIES, TAME")
+strawberry$`Data Item`[4]<-str_replace(strawberry$`Data Item`[4],"STRAWBERRIES","STRAWBERRIES, TAME")
+strawberry$`Data Item`[5]<-str_replace(strawberry$`Data Item`[5],"STRAWBERRIES","STRAWBERRIES, TAME")
+
+strawberry %<>% separate(`Data Item`, c("S","type", "meas", "what"), sep = ",") 
+strawberry %<>% select(-S)
+head(strawberry,n=20)
+```
+
+
+-We have a new problem, that is-- 'type' column has multiple value, and we need to separate them.
+
+
+```{r}
+#make a dataframe to separate the multiple characters in 'type'
+ty_1<- str_split(strawberry$type, " ", simplify=TRUE)
+head(ty_1, n=20)
+strawberry %<>% separate(type,c("s1", "type", "b1","lab1", "lab2","lab3"), " ")
+head(strawberry,n=20)
+```
+
+-We get rid of 's1' and 'b1' since two columns do not contain informative value
+-Replace 'NA' with blank 
+```{r}
+strawberry %<>% select(-c(s1,b1))
+strawberry[is.na(strawberry)] <- " "
+head(strawberry,n=20)
+```
+
+
+####Dealing with Domain
+-Another column we need to deal with is 'Domain'
+-After we separate Domain into different columns, we replace 'NA' with blank entries
+
+```{r}
+strawberry %<>% separate(Domain, c("Domain_left", "Domain_right"), sep = ", ")
+strawberry[is.na(strawberry)] <- " "
+```
+
+####Dealing with Domain category
+
+-We need to separate 'Domain category' as well
+
+
+```{r}
+strawberry %<>% separate(`Domain Category`, c("DC_left", "DC_right"), sep = ", ")
+strawberry$DC_left%>%unique()
+```
+
+-After we check the unique value of 'DC_left' and DC_right', we found out that 'DC_left' also contain multiple values. Thus, we continue separate 'DC_left' and 'DC_right'.
+-After we separate the two columns, replace all 'NA' value
+
+```{r}
+strawberry %<>% separate(DC_left, c("DC_left_l", "DC_left_r"), sep = ": ")
+strawberry %<>% separate(DC_right, c("DC_right_l", "DC_right_r"), sep = ": ")
+strawberry[is.na(strawberry)] <- " "
+head(strawberry,n=20)
+```
+
+-We use code:
+
+'paste(strawberry$Domain_left,strawberry$DC_left_l) %>% unique'
+
+to decide remove column DC_left_l
+
+-Same code apply to 'Domain_right' and 'DC_right_l, we decide to remove DC_right_l
+
+```{r}
+paste(strawberry$Domain_left,strawberry$DC_left_l) %>% unique
+strawberry %<>%  select(-DC_left_l)
+strawberry %<>%  select(-DC_right_l)
+```
+
+-Next we combine 'lab1' and 'lab2', before we combine, we test if there is overlaps of two columns and then we combine them
+
+```{r}
+#check for lab1, lab2, lab3
+
+##paste(strawberry$lab1, strawberry$lab2,strawberry$lab3) %>% unique()
+strawberry %<>% mutate(label = paste(lab1,lab2,lab3))
+```
+
+-Also, we test for Domain_left and Domain_right, and then we combine them
+
+```{r}
+#test for "chemical" in column Domain_left
+
+##paste(strawberry$Domain_left, strawberry$Domain_right) %>% unique()
+## remove "Chemical" and joint the columns
+
+strawberry %<>% mutate(Domain_left = "CHEMICAL", Domain_left = "")
+strawberry %<>% mutate(Chemical=paste(Domain_left, Domain_right)) 
+
+strawberry %<>% select(-c(Domain_left, Domain_right))
+strawberry %<>% select(Year, State, type, what, meas, label, DC_left_r, DC_right_r, Chemical, Value )
+head(strawberry,n=20)
+```
+
+-Now the problem is that we have entries in both the "what" and "meas" columns that begin with "MEASURED IN"
+we need to know how many overlaps there are and combine them together
+
+```{r}
+## in the column "what"
+count_1 <- str_detect(strawberry$what, "MEASURED IN")
+sum(count_1)
+
+## in the column "meas"
+
+count_2 <- str_detect(strawberry$meas, "MEASURED IN")
+sum(count_2)
+
+
+```
+
+- We need to combine them into one column.We will separate them from their current column and put them into two columns, then we will test to make sure there aren't any overlaps
+
+-The method we use is to separate the "MEASURED IN" entries in the meas column and form an index of the entries to be separated out
+
+```{r}
+f1 <- function(a,b){
+  if(a){
+    return(b)
+  }else{
+      return("")
+  }
+}
+
+strawberry %<>% mutate(m_in_1 = unlist(map2(count_2, strawberry$meas, f1)))
+```
+
+
+-Now we replace "MEASURED IN.*$" value in every entry of meas so we don't need them
+
+
+```{r}
+strawberry %<>% mutate(meas = str_replace(strawberry$meas, "MEASURED IN.*$", ""))
+```
+
+-We will do the same process to "what" column as well and then we combine 'm_in_1' and 'm_in_2' columns
+```{r}
+strawberry %<>% mutate(m_in_2 = unlist(map2(count_1, strawberry$what, f1)))
+strawberry %<>% mutate(what = str_replace(strawberry$what, "MEASURED IN.*$", ""))
+strawberry %<>% mutate(units = str_trim(paste(m_in_1, m_in_2))) 
+
+#check for unique value in combined column
+strawberry$units %>% unique()
+```
+##(3)Final cleaning up and organizing
+
+The final data cleaning and organizing mainly focus on rename the variables that makes no sense and variables that can be revised in a better form that can be easily interpret 
+
+```{r}
+#test unique value in every column
+#strawberry$what %>% unique()  
+
+
+#strawberry$meas %>% unique()  
+
+
+#strawberry$label %>% unique() 
+
+
+#strawberry$DC_left_r %>% unique() 
+
+
+#strawberry$DC_right_r %>% unique() 
+
+
+#strawberry$Value %>% unique() 
+
+
+#strawberry$units %>% unique() 
+
+#rename column names
+
+strawberry %<>% rename(Avg = what)
+strawberry %<>% rename(Marketing = meas, Harvest = label, Chem_family = DC_left_r, Materials = DC_right_r, Measures = units)
+
+#colnames(strawberry)
+
+strawberry %<>% select(Year, State, type, Marketing, 
+                   Measures, Avg, Harvest, Chem_family,
+                   Materials, Chemical, Value )
+
+
+#combine Marketing and Harvest
+strawberry %<>% mutate(production = str_trim(paste(Marketing, Harvest)))
+
+
+strawberry %<>% select(Year, State, type, production, Measures,
+                   Avg, Chem_family, Materials, Chemical, Value)
+
+#combine Chem_family and Chemical
+strawberry %<>% mutate(Chemical = str_trim(paste(Chem_family, Chemical)))
+
+strawberry %<>% select(Year, State, type, production, Avg, Measures, Materials, Chemical, Value)
+
+head(strawberry,n=20)
+
+```
