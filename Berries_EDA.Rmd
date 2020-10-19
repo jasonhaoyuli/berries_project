@@ -1,0 +1,176 @@
+---
+title: "Berries_EDA"
+author: "Haoyu Li"
+date: "10/18/2020"
+output: pdf_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(knitr)
+library(tidyverse)
+library(magrittr)
+library(stats)
+```
+
+
+#Data recap
+
+The data used in this analysis is the cleaned "berries", to be more specific, that is the strawberries I extract out of "berries". More information on this data set can be found on this website : http://quickstats.nass.usda.gov
+
+#Part 1: exploratory data analysis
+
+
+The exploratory data analysis is to do some basic summaries of the dataset that we are going to look deep into. We will see if there are outliers, large variances, and anything special tha we should pay attention to. 
+
+##read cleaned data
+
+
+```{r}
+sberry<-read.csv("strawberry.csv")
+sberry%<>%select(-X)
+```
+
+
+#check how many types of chemicals
+
+
+```{r}
+df_1<-sberry%>%select(Year,State,production,Chemical,Value)
+
+df_1%>%group_by(Chemical)%>%summarise(n=n())
+```
+
+
+
+
+#filter out NA and D value
+
+
+```{r}
+
+df_1%<>%filter(Chemical !="")
+df_1%<>% filter(Value != "(D)")
+
+df_1%<>% filter(Value !=  "(NA)")
+
+df_1%<>%filter(Value != "(Z)")
+
+df_1$Value<-as.numeric(gsub(",", "", df_1$Value))
+
+```
+
+
+
+#Basic data summary
+
+
+-We do boxplot on the chemical variable to see the data distribution
+
+
+-No obvious outliers by just looking at the boxplot
+
+-We also do relatively simple bar chart on the categories of production to get a sense of what kinds of chemicals are used mostly 
+
+
+```{r}
+#summarize the chemical usage
+s1<-df_1%>%group_by(State,Chemical)%>%summarise(total = sum(Value))
+view(s1)
+
+#boxplot of Chemical 
+ggplot(data = df_1) +
+  geom_boxplot(mapping = aes(x = Chemical, y = Value)) +
+  theme(axis.title = element_text(size = 13, face = "bold")) +
+  labs(x = "Chemical Type")
+
+#count each production by the chemical categories
+ggplot(data=df_1)+
+  geom_bar(mapping=aes(x=production,fill=Chemical),position = "dodge")+
+  theme(axis.title = element_text(size = 13, face = "bold")) +
+  labs(x = "Production")
+
+
+```
+
+#Part 2: PCA
+
+Without going into too much detail, Principal Component Analysis (PCA) can thus be used to reduce the dimensions of the data into fewer components that would retain as much of the variability expressed by the original data as possible. Here, we are interested in the relationship between different chemicals 
+
+
+-prepare data
+
+
+```{r}
+
+df_2<-df_1%>%select(State,Chemical,Value)
+df_2[is.na(df_2)]<-0
+df_3<-df_2%>%group_by(State,Chemical)%>%summarise(total = sum(Value))
+df_4 <- df_3%>%pivot_wider(names_from = Chemical,values_from = total)
+df_4[is.na(df_4)] <-0
+df_5<-df_4[,-1]
+head(df_5)
+```
+
+
+#find variable describing the most variance
+```{r}
+df_5_var <- apply(df_5, 2, var)
+print(df_5_var)
+max(df_5_var)
+which(df_5_var == max(df_5_var))
+min(df_5_var)
+which(df_5_var == min(df_5_var))
+
+```
+
+
+#Correlation matrix
+
+
+
+```{r}
+
+cor_m <- cor(df_5)
+print(cor_m)
+
+```
+
+
+
+#PCA
+
+-By plot the cluster, we can see some of chemical variable clustering together so we can infer these variables may have interactions and relationship that might have effect on the modeling that research team are going to do.
+
+
+-The purpose the  PCA is to help research team get a sense of what variables they should pay attention. That is why the purpose of EDA is to give advice and help team explore the data.
+
+```{r}
+pca <- prcomp(df_5, center = TRUE, scale. = TRUE)
+print(pca)
+summary(pca)
+
+# flip values to positives
+pca_1 <- pca
+pca_1$rotation <- -pca_1$rotation
+pca_1$x <- -pca_1$x
+print(pca_1)
+summary(pca_1)
+
+# PCA scatter plot
+pc_2 <- data.frame(pca_1$rotation[, 1:2])
+pc_2$Chemical <- rownames(pc_2)
+plot1 <- ggplot(pc_2, aes(x = PC1, y = PC2))
+plot1 <- plot1 + geom_point(size = 2) +
+  geom_text(aes(label = Chemical), vjust = 1) +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 10, face = "bold"))
+print(plot1)
+```
+
+
+
+
+
