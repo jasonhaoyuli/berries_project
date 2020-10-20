@@ -1,0 +1,95 @@
+---
+title: "Berries Project"
+author: "Haoyu Li"
+date: "10/20/2020"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+library(png)
+library(grid)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Overview {.smaller}
+- Every year, the United States Department of Agriculture collect enormous amount of data for different kinds of agriculture products, including animals, crops, and fruits etc.
+- These data have been collected for agriculture research purpose. 
+Thus, it is important for research team not just only to collect data, 
+but to have the ability to clean, organize, and explore the data for future analysis and modeling
+- For this project, we are going to look at the data including three major berries, and we are going to clean, organize, and explore the berries data so that these data can be used for future research purpose.
+
+
+
+## Data Cleaning {.smaller}
+- Data can get from website: http://quickstats.nass.usda.gov
+
+```{r fig.height=3}
+img_1=readPNG("img_1.png")
+grid.raster(img_1)
+```
+- By looking at the data quickly, we found some columns don't have values so for these columns,so we can discard them these columns
+
+
+## Data cleaning(cont.) {.smaller}
+
+```{r fig.height=3}
+img_2=readPNG("img_2.png")
+grid.raster(img_2)
+```
+
+- Clean out useless columns
+- Separate Columns that have multiple values
+
+
+## Data Cleaning(cont.) {.smaller}
+
+### Methods summary
+- After simple steps of cleaning, focus on specific columns.
+- Separate multiples values until we get only one value in a column
+- Merge columns which have same values
+- Check unique values in every column for merging and renaming purpose
+
+## Strawberry data after cleaning
+
+```{r fig.height=3}
+img_3=readPNG("img_3.png")
+grid.raster(img_3)
+```
+
+## Exploratory Data Analysis
+- Target chemicals usage
+- Data clean for Analysis
+- Group chemical by State 
+- Values in total
+
+```{r}
+img_4=readPNG("img_4.png")
+grid.raster(img_4)
+```
+
+## Basic Data summary
+- Boxplot to check variances 
+```{r}
+img_5=readPNG("img_5.png")
+grid.raster(img_5)
+```
+
+## Application chemical usage
+```{r}
+img_6=readPNG("img_6.png")
+grid.raster(img_6)
+```
+
+
+## PCA Analysis
+- Correlation matrix
+```{r}
+img_7=readPNG("img_7.png")
+grid.raster(img_7)
+```
+
+## PCA Scatter plot
+```{r}
+img_8=readPNG("img_8.png")
+grid.raster(img_8)
+```
